@@ -3,51 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sicherer Chat</title>
+    <title>Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --bg-color: #f0f0f0; --chat-bg: white; --text-color: black; --received-msg: #e5e5ea; --input-bg: rgba(255,255,255,0.95); --border-color: #ddd; --header-bg: white; }
         body.dark-mode { --bg-color: #121212; --chat-bg: #1e1e1e; --text-color: #ffffff; --received-msg: #3a3a3c; --input-bg: rgba(30,30,30,0.95); --border-color: #333; --header-bg: #1e1e1e; }
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; width: 100%; position: fixed; background: var(--bg-color); color: var(--text-color); font-family: -apple-system, system-ui, sans-serif; }
         body { display: flex; flex-direction: column; }
-        
         header { padding: 10px 15px; background: var(--header-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); z-index: 10; padding-top: env(safe-area-inset-top); }
+        
+        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: var(--chat-bg); box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 1500; transition: 0.3s; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; }
+        #sidebar.open { left: 0; }
+        #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1400; }
         
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
         .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
         .sent { align-self: flex-end; }
         .received { align-self: flex-start; }
-        .msg { padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; position: relative; cursor: pointer; transition: 0.2s; }
+        .msg { padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; cursor: pointer; position: relative; }
         .sent .msg { background: #007aff; color: white; border-bottom-right-radius: 2px; }
         .received .msg { background: var(--received-msg); color: var(--text-color); border-bottom-left-radius: 2px; }
         
-        .tick { font-size: 11px; margin-left: 3px; font-weight: bold; letter-spacing: -2px; }
-        .tick-blue { color: #34b7f1; }
-        
-        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: var(--chat-bg); box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 1500; transition: 0.3s; padding: 20px; display: flex; flex-direction: column; }
-        #sidebar.open { left: 0; }
-        #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1400; }
-
-        .auth-card { background: var(--chat-bg); padding: 30px; border-radius: 25px; width: 85%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        input { padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
-        
-        #context-menu { position: fixed; display: none; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 2000; width: 170px; overflow: hidden; }
-        .menu-item { padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); }
         .reactions { display: flex; gap: 2px; margin-top: -5px; padding: 0 5px; }
         .reaction-badge { background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1px 4px; font-size: 11px; }
-
         .reply-ref { font-size: 11px; opacity: 0.6; background: rgba(0,0,0,0.1); padding: 4px 8px; border-left: 3px solid #007aff; border-radius: 4px; margin-bottom: 2px; }
-        #reply-preview { display: none; padding: 8px 15px; background: var(--input-bg); border-top: 1px solid var(--border-color); font-size: 13px; justify-content: space-between; }
         
+        #context-menu { position: fixed; display: none; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 2000; width: 170px; }
+        .menu-item { padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+        
+        #reply-preview, #edit-preview { display: none; padding: 8px 15px; background: var(--input-bg); border-top: 1px solid var(--border-color); font-size: 13px; justify-content: space-between; align-items: center; }
         .input-area { padding: 10px; background: var(--input-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        #message-input { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid var(--border-color); margin: 0 8px; outline: none; }
+        #message-input { flex: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; margin: 0 8px; outline: none; background: var(--chat-bg); color: var(--text-color); }
+        #send-btn { background:#007aff; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay" style="position:fixed; inset:0; background:var(--bg-color); z-index:3000; display:flex; align-items:center; justify-content:center;">
-    <div class="auth-card">
-        <h2 style="margin:0">Willkommen</h2>
+    <div style="background:var(--chat-bg); padding:30px; border-radius:25px; width:85%; max-width:300px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <h2 style="margin:0">Anmelden</h2>
         <input type="text" id="auth-user" placeholder="Name">
         <input type="password" id="auth-pass" placeholder="Passwort">
         <button id="login-submit" style="padding:12px; background:#007aff; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">Anmelden</button>
@@ -58,13 +52,13 @@
 <div id="sidebar-overlay"></div>
 <div id="sidebar">
     <h2 style="margin:0">Menü</h2>
-    <div id="admin-section" style="display:none; margin-top:15px; padding:10px; background:rgba(255,149,0,0.1); border:1px solid #ff9500; border-radius:10px;">
-        <strong style="font-size:12px; color:#ff9500;">ADMIN</strong><br>
-        <input type="text" id="new-user-name" placeholder="Name freischalten" style="width:100%; margin-top:5px; padding:5px; font-size:12px;">
-        <button id="add-user-btn" style="width:100%; margin-top:5px; cursor:pointer;">Hinzufügen</button>
+    <div id="admin-section" style="display:none; margin-top:15px; padding:10px; border:1px solid #ff9500; border-radius:10px; background:rgba(255,149,0,0.1);">
+        <strong style="color:#ff9500; font-size:12px;">ADMIN</strong><br>
+        <input type="text" id="new-user-name" placeholder="Name freischalten" style="width:100%; margin-top:5px; padding:5px; box-sizing:border-box;">
+        <button id="add-user-btn" style="width:100%; margin-top:5px; cursor:pointer;">Erlauben</button>
     </div>
     <div id="status-container" style="margin-top:20px;"></div>
-    <button id="logout-btn" style="margin-top:auto; background:#ff3b30; color:white; border:none; padding:15px; border-radius:10px; cursor:pointer; font-weight:bold;">Abmelden</button>
+    <button id="logout-btn" style="margin-top:auto; background:#ff3b30; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer;">Abmelden</button>
 </div>
 
 <div id="context-menu">
@@ -72,11 +66,12 @@
         <span onclick="react('❤️')">❤️</span><span onclick="react('👍')">👍</span><span onclick="react('😂')">😂</span>
     </div>
     <div class="menu-item" onclick="prepareReply()">💬 Antworten</div>
-    <div id="menu-delete" class="menu-item" style="color:red; display:none;" onclick="deleteMsg()">🗑️ Löschen</div>
+    <div id="menu-edit" class="menu-item" onclick="prepareEdit()">✏️ Bearbeiten</div>
+    <div id="menu-delete" class="menu-item" style="color:red;" onclick="deleteMsg()">🗑️ Löschen</div>
 </div>
 
 <header>
-    <button id="open-menu" style="background:none; border:none; font-size:24px; cursor:pointer;">☰</button>
+    <button id="open-menu" style="background:none; border:none; font-size:24px; color:var(--text-color); cursor:pointer;">☰</button>
     <strong id="display-name">Chat</strong>
     <button id="dark-btn" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
 </header>
@@ -85,13 +80,17 @@
 
 <div id="reply-preview">
     <span id="reply-text-display"></span>
-    <button onclick="cancelReply()" style="background:none; border:none; color:red; cursor:pointer;">X</button>
+    <button onclick="cancelReply()" style="background:none; border:none; color:red; font-weight:bold;">X</button>
+</div>
+<div id="edit-preview">
+    <span style="color:#ff9500;">✏️ Nachricht bearbeiten...</span>
+    <button onclick="cancelEdit()" style="background:none; border:none; color:red; font-weight:bold;">X</button>
 </div>
 
 <div class="input-area">
     <button id="img-btn" style="background:none; border:none; font-size:22px; cursor:pointer;">🖼️</button>
     <input type="text" id="message-input" placeholder="Nachricht..." autocomplete="off">
-    <button id="send-btn" style="background:#007aff; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;">➔</button>
+    <button id="send-btn">➔</button>
 </div>
 
 <script>
@@ -100,128 +99,115 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = localStorage.getItem("chat-user-logged");
-    let selId = null, selText = "", replyId = null, deleteAllowed = true;
+    let selId = null, selText = "", editId = null, replyId = null;
 
     // --- AUTH ---
     document.getElementById("login-submit").onclick = async () => {
         const n = document.getElementById("auth-user").value.trim().toLowerCase();
-        const p = btoa(document.getElementById("auth-pass").value.trim()); // Passwort verschlüsselt vergleichen
+        const p = btoa(document.getElementById("auth-pass").value.trim());
         const { data } = await supabase.from('users').select('*').eq('name', n).single();
         if(data && data.password === p) {
             localStorage.setItem("chat-user-logged", n);
             location.reload();
-        } else alert("Falscher Name oder Passwort!");
+        } else alert("Fehler!");
     };
 
     document.getElementById("register-submit").onclick = async () => {
         const n = document.getElementById("auth-user").value.trim().toLowerCase();
         const p = document.getElementById("auth-pass").value.trim();
-        if(!n || p.length < 3) return alert("Daten unvollständig!");
-
-        // Prüfen ob auf Liste
         const { data: set } = await supabase.from('settings').select('data').eq('key', 'allowed_users').single();
-        if(!set.data.names.includes(n)) return alert("Dein Name ist nicht auf der Erlaubt-Liste!");
-
-        // Registrieren
-        const { error } = await supabase.from('users').insert([{ name: n, password: btoa(p) }]);
-        if(error) alert("Dieser Name ist bereits vergeben!"); 
-        else alert("Konto erstellt! Du kannst dich jetzt einloggen.");
+        if(set && set.data.names.includes(n)) {
+            const { error } = await supabase.from('users').insert([{ name: n, password: btoa(p) }]);
+            if(!error) alert("Konto erstellt!"); else alert("Existiert bereits!");
+        } else alert("Admin fragen!");
     };
 
-    // --- CHAT ---
+    // --- CHAT LOGIK ---
     if (myName) {
         document.getElementById("auth-overlay").style.display = "none";
         document.getElementById("display-name").textContent = myName.toUpperCase();
         if(myName === "infinity") document.getElementById("admin-section").style.display = "block";
 
-        // Status
-        const updateOnline = async (val) => {
-            await supabase.from('status').upsert({ user_name: myName, online: val, last_seen: new Date() });
-        };
-        updateOnline(true);
-        window.addEventListener('beforeunload', () => updateOnline(false));
-
-        // Realtime
-        supabase.channel('any').on('postgres_changes', {event:'*', schema:'public'}, () => {
+        supabase.channel('db').on('postgres_changes', {event:'*', schema:'public'}, () => {
             loadMessages(); loadStatus();
         }).subscribe();
 
         async function loadStatus() {
-            const { data: stats } = await supabase.from('status').select('*');
+            const { data } = await supabase.from('status').select('*');
             const cont = document.getElementById("status-container");
             cont.innerHTML = "<strong>Status</strong>";
-            stats.forEach(s => {
-                const color = s.online ? '#4cd964' : '#8e8e93';
-                cont.innerHTML += `<div style="font-size:12px; margin:5px 0;"><span style="color:${color}">●</span> ${s.user_name}</div>`;
+            data.forEach(s => {
+                cont.innerHTML += `<div style="font-size:12px; margin:5px 0;"><span style="color:${s.online?'#4cd964':'#8e8e93'}">●</span> ${s.user_name}</div>`;
             });
         }
 
         async function loadMessages() {
-            const { data: messages } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(50);
+            const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
             const win = document.getElementById("chat-window");
             win.innerHTML = "";
-            messages.reverse().forEach(m => {
+            data.forEach(m => {
                 const wrap = document.createElement("div");
                 wrap.className = `msg-wrapper ${m.user_name === myName ? 'sent' : 'received'}`;
-                const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 const rHtml = m.reply_to_text ? `<div class="reply-ref">Ref: ${m.reply_to_text}</div>` : "";
-                const reactions = (m.reactions && Object.keys(m.reactions).length > 0) ? `<div class="reactions">${Object.values(m.reactions).map(r => `<span class="reaction-badge">${r}</span>`).join("")}</div>` : "";
-                
+                const reactHtml = (m.reactions && Object.keys(m.reactions).length > 0) ? `<div class="reactions">${Object.values(m.reactions).map(r => `<span class="reaction-badge">${r}</span>`).join("")}</div>` : "";
                 wrap.innerHTML = `<small style="font-size:9px; opacity:0.5; margin:0 5px;">${m.user_name}</small>${rHtml}
                     <div class="msg" id="msg-${m.id}">
-                        ${m.image_url ? `<img src="${m.image_url}" style="max-width:100%; border-radius:10px;">` : ''}
+                        ${m.image_url ? `<img src="${m.image_url}" style="max-width:100%; border-radius:10px;"><br>` : ''}
                         ${m.text || ''}
-                        <div style="font-size:8px; opacity:0.6; text-align:right;">${time} <span class="tick">✓✓</span></div>
-                    </div>${reactions}`;
+                        <div style="font-size:8px; opacity:0.6; text-align:right;">${m.edited?'(editiert) ':''}${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                    </div>${reactHtml}`;
                 win.appendChild(wrap);
-
                 document.getElementById(`msg-${m.id}`).oncontextmenu = (e) => {
-                    e.preventDefault();
-                    selId = m.id; selText = m.text;
+                    e.preventDefault(); selId = m.id; selText = m.text;
                     const menu = document.getElementById("context-menu");
-                    menu.style.display = "block";
-                    menu.style.left = Math.min(e.pageX, window.innerWidth - 180) + "px";
-                    menu.style.top = Math.min(e.pageY, window.innerHeight - 150) + "px";
+                    menu.style.display = "block"; menu.style.left = e.pageX + "px"; menu.style.top = e.pageY + "px";
+                    document.getElementById("menu-edit").style.display = (m.user_name === myName) ? "block" : "none";
                     document.getElementById("menu-delete").style.display = (m.user_name === myName || myName === "infinity") ? "block" : "none";
                 };
             });
             win.scrollTop = win.scrollHeight;
         }
 
-        async function sendMessage() {
-            const input = document.getElementById("message-input");
-            const val = input.value.trim();
-            if(!val && !replyId) return;
-            const msg = { text: val, user_name: myName, reply_to_text: replyId ? selText : null };
-            await supabase.from('messages').insert([msg]);
-            input.value = ""; cancelReply();
+        async function send() {
+            const val = document.getElementById("message-input").value.trim();
+            if(!val && !editId) return;
+            if(editId) {
+                await supabase.from('messages').update({ text: val, edited: true }).eq('id', editId);
+                cancelEdit();
+            } else {
+                const msg = { text: val, user_name: myName, reply_to_text: replyId ? selText : null };
+                await supabase.from('messages').insert([msg]);
+                cancelReply();
+            }
+            document.getElementById("message-input").value = "";
         }
 
-        document.getElementById("send-btn").onclick = sendMessage;
-        document.getElementById("message-input").onkeydown = (e) => { if(e.key === "Enter") sendMessage(); };
-        
+        document.getElementById("send-btn").onclick = send;
+        document.getElementById("message-input").onkeydown = (e) => { if(e.key === "Enter") send(); };
         loadMessages(); loadStatus();
+        supabase.from('status').upsert({ user_name: myName, online: true, last_seen: new Date() });
     }
 
-    // --- UI HELPER ---
+    // --- ACTIONS ---
     window.react = async (emoji) => {
         const { data } = await supabase.from('messages').select('reactions').eq('id', selId).single();
         let re = data.reactions || {}; re[myName] = emoji;
         await supabase.from('messages').update({ reactions: re }).eq('id', selId);
         document.getElementById("context-menu").style.display = "none";
     };
-    window.prepareReply = () => { replyId = selId; document.getElementById("reply-text-display").textContent = "Antwort an: " + selText; document.getElementById("reply-preview").style.display = "flex"; document.getElementById("context-menu").style.display = "none"; };
+    window.prepareEdit = () => { editId = selId; document.getElementById("message-input").value = selText; document.getElementById("edit-preview").style.display = "flex"; document.getElementById("context-menu").style.display = "none"; };
+    window.cancelEdit = () => { editId = null; document.getElementById("edit-preview").style.display = "none"; document.getElementById("message-input").value = ""; };
+    window.prepareReply = () => { replyId = selId; document.getElementById("reply-text-display").textContent = "Antwort an: " + selText.substring(0, 15); document.getElementById("reply-preview").style.display = "flex"; document.getElementById("context-menu").style.display = "none"; };
     window.cancelReply = () => { replyId = null; document.getElementById("reply-preview").style.display = "none"; };
     window.deleteMsg = async () => { if(confirm("Löschen?")) await supabase.from('messages').delete().eq('id', selId); document.getElementById("context-menu").style.display = "none"; };
     
     document.getElementById("img-btn").onclick = async () => {
-        const u = prompt("Bild-URL einfügen:");
+        const u = prompt("Bild-URL:");
         if(u && u.startsWith("http")) await supabase.from('messages').insert([{ image_url: u, user_name: myName }]);
     };
-
+    document.getElementById("logout-btn").onclick = () => { localStorage.clear(); location.reload(); };
     document.getElementById("open-menu").onclick = () => { document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebar-overlay").style.display = "block"; };
     document.getElementById("sidebar-overlay").onclick = () => { document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebar-overlay").style.display = "none"; };
-    document.getElementById("logout-btn").onclick = () => { localStorage.clear(); location.reload(); };
     document.getElementById("dark-btn").onclick = () => document.body.classList.toggle("dark-mode");
     document.body.onclick = (e) => { if(!e.target.closest('#context-menu')) document.getElementById("context-menu").style.display = "none"; };
 
@@ -231,8 +217,7 @@
         if(n && !set.data.names.includes(n)) {
             set.data.names.push(n);
             await supabase.from('settings').update({ data: { names: set.data.names } }).eq('key', 'allowed_users');
-            alert(n + " freigeschaltet!");
-            document.getElementById("new-user-name").value = "";
+            alert(n + " erlaubt!");
         }
     };
 </script>
