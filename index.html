@@ -3,31 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SMS Chat Pro - Secure</title>
+    <title>SMS Chat Pro - Ultimate</title>
     <style>
         :root { --bg-color: #f0f0f0; --chat-bg: white; --text-color: black; --received-msg: #e5e5ea; --input-bg: rgba(255,255,255,0.95); --border-color: #ddd; --header-bg: white; }
         body.dark-mode { --bg-color: #121212; --chat-bg: #1e1e1e; --text-color: #ffffff; --received-msg: #3a3a3c; --input-bg: rgba(30,30,30,0.95); --border-color: #333; --header-bg: #1e1e1e; }
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; width: 100%; position: fixed; background: var(--bg-color); color: var(--text-color); }
-        body { font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; }
+        
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; width: 100%; position: fixed; background: var(--bg-color); color: var(--text-color); font-family: -apple-system, system-ui, sans-serif; }
+        body { display: flex; flex-direction: column; }
+        
         header { padding: 10px 15px; background: var(--header-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); z-index: 10; flex-shrink: 0; padding-top: env(safe-area-inset-top); }
-        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: var(--chat-bg); box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 1000; transition: 0.3s; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; color: var(--text-color); }
+        
+        /* SIDEBAR & OVERLAYS */
+        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: var(--chat-bg); box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 1500; transition: 0.3s; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; }
         #sidebar.open { left: 0; }
-        #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 999; }
+        #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1400; }
+        
+        #archive-overlay { position: fixed; inset: 0; background: var(--bg-color); z-index: 1600; display: none; flex-direction: column; }
+        #archive-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+
         .admin-box { display: none; background: rgba(255, 149, 0, 0.1); border: 1px solid #ff9500; border-radius: 10px; padding: 12px; margin-top: 15px; }
-        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; }
-        #archive-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 1100; display: none; flex-direction: column; }
-        #archive-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
-        .msg { padding: 8px 12px; border-radius: 18px; max-width: 80%; word-wrap: break-word; font-size: 15px; display: flex; flex-direction: column; }
-        .sent { background: #007aff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .received { background: var(--received-msg); color: var(--text-color); align-self: flex-start; border-bottom-left-radius: 2px; }
-        #typing-indicator { font-size: 11px; padding: 5px 15px; color: #8e8e93; font-style: italic; height: 15px; }
+        .status-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; color: white; }
+
+        /* CHAT WINDOW */
+        #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
+        .sent { align-self: flex-end; }
+        .received { align-self: flex-start; }
+        
+        .msg { padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; cursor: pointer; position: relative; }
+        .sent .msg { background: #007aff; color: white; border-bottom-right-radius: 2px; }
+        .received .msg { background: var(--received-msg); color: var(--text-color); border-bottom-left-radius: 2px; }
+        
+        .tick { font-size: 11px; margin-left: 3px; font-weight: bold; letter-spacing: -2px; }
+        .tick-blue { color: #34b7f1; opacity: 1 !important; }
+
+        /* REAKTIONEN & ANTWORTEN */
+        .reactions { display: flex; gap: 2px; margin-top: -5px; z-index: 2; padding: 0 5px; }
+        .reaction-badge { background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1px 4px; font-size: 11px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .reply-ref { font-size: 11px; opacity: 0.6; background: rgba(0,0,0,0.2); padding: 4px 8px; border-left: 3px solid #007aff; border-radius: 4px; margin-bottom: 2px; color: inherit; }
+        
+        /* PREVIEWS */
+        #reply-preview, #edit-preview { display: none; padding: 8px 15px; background: var(--input-bg); border-top: 1px solid var(--border-color); font-size: 13px; justify-content: space-between; align-items: center; }
+
+        /* KONTEXT MENÜ */
+        #context-menu { position: fixed; display: none; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 2000; width: 170px; overflow: hidden; }
+        .menu-item { padding: 12px 15px; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-color); }
+        .emoji-bar { display: flex; justify-content: space-around; padding: 8px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02); }
+
+        /* INPUT AREA */
         .input-area { padding: 10px; background: var(--input-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
         #message-input { flex: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; outline: none; background: var(--chat-bg); color: var(--text-color); font-size: 16px; margin: 0 8px; }
-        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        
+        #auth-overlay { position: fixed; inset: 0; background: var(--bg-color); display: flex; align-items: center; justify-content: center; z-index: 3000; }
         .auth-card { background: var(--chat-bg); padding: 30px; border-radius: 25px; width: 85%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-blue { width: 100%; padding: 12px; background: #007aff; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .btn-small { padding: 5px 10px; font-size: 11px; border-radius: 5px; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -35,33 +63,52 @@
 <div id="sidebar-overlay"></div>
 <div id="sidebar">
     <h2 style="margin-top:0;">Menü</h2>
-    <button id="archive-btn" class="btn-blue">📦 Archiv öffnen</button>
+    <button id="archive-btn" style="width:100%; padding:12px; background:#007aff; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">📦 Archiv öffnen</button>
+    
     <div id="admin-section" class="admin-box">
-        <strong style="color:#ff9500; font-size:12px;">ADMIN CONTROL</strong>
+        <strong style="color:#ff9500; font-size:12px;">ADMIN CONTROL</strong><br>
         <div id="delete-status-label" class="status-badge"></div>
-        <button id="toggle-delete-btn" class="btn-small" style="width:100%; background:#ff9500; color:white; margin-top:10px; font-weight:bold;">LÖSCHEN UMSCHALTEN</button>
+        <button id="toggle-delete-btn" style="width:100%; margin-top:10px; padding:5px; font-size:11px; cursor:pointer;">LÖSCHEN UMSCHALTEN</button>
         <div style="margin-top:15px; border-top:1px solid rgba(0,0,0,0.1); padding-top:10px;">
             <p style="font-size:11px; margin:0;">Nutzer freischalten:</p>
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="new-user-name" placeholder="Name" style="width:70%; padding:5px; border-radius:5px; border:1px solid #ddd;">
-                <button id="add-user-btn" class="btn-small" style="background:#4cd964; color:white;">+</button>
+                <button id="add-user-btn" style="background:#4cd964; color:white; border:none; border-radius:5px; width:30px; cursor:pointer;">+</button>
             </div>
             <div id="allowed-list-display" style="font-size:11px; margin-top:8px; max-height:100px; overflow-y:auto;"></div>
         </div>
     </div>
-    <div style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px;"><strong>Status</strong><div id="status-container"></div></div>
-    <button id="logout-btn-sidebar" style="margin-top:auto; background:#ff3b30; border:none; color:white; font-weight:bold; cursor:pointer; padding:15px; border-radius:10px;">🚪 Abmelden</button>
+
+    <div style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px;">
+        <strong>Status</strong>
+        <div id="status-container"></div>
+    </div>
+    
+    <button id="logout-btn" style="margin-top:auto; background:#ff3b30; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer;">🚪 Abmelden</button>
 </div>
 
 <div id="archive-overlay">
-    <header><button id="close-archive" style="background:none; border:none; font-size:16px; color:#007aff; font-weight:bold;">← Zurück</button><strong>Archiv</strong><div style="width:50px;"></div></header>
+    <header>
+        <button id="close-archive" style="background:none; border:none; font-size:16px; color:#007aff; font-weight:bold; cursor:pointer;">← Zurück</button>
+        <strong>Archiv</strong>
+        <div style="width:50px;"></div>
+    </header>
     <div id="archive-content"></div>
 </div>
 
+<div id="context-menu">
+    <div class="emoji-bar">
+        <span onclick="react('❤️')">❤️</span><span onclick="react('👍')">👍</span><span onclick="react('😂')">😂</span><span onclick="react('😮')">😮</span>
+    </div>
+    <div class="menu-item" onclick="prepareReply()">💬 Antworten</div>
+    <div id="menu-edit" class="menu-item" onclick="prepareEdit()">✏️ Bearbeiten</div>
+    <div id="menu-delete" class="menu-item" style="color:red; display:none;" onclick="deleteMsg()">🗑️ Löschen</div>
+</div>
+
 <header>
-    <button style="background:none; border:none; font-size:24px; color:var(--text-color);" id="open-menu">☰</button>
+    <button id="open-menu" style="background:none; border:none; font-size:24px; color:var(--text-color); cursor:pointer;">☰</button>
     <strong id="display-name">CHAT</strong>
-    <button id="darkmode-btn" style="background:none; border:none; font-size:20px;">🌓</button>
+    <button id="dark-btn" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
 </header>
 
 <div id="auth-overlay">
@@ -69,18 +116,28 @@
         <h2>Login</h2>
         <input type="text" id="auth-user" placeholder="Name">
         <input type="password" id="auth-pass" placeholder="Passwort">
-        <button id="login-submit" class="btn-blue">Anmelden</button>
+        <button id="login-submit" style="padding:12px; background:#007aff; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">Anmelden</button>
         <button id="register-submit" style="background:none; border:none; color:#007aff; font-size:12px; cursor:pointer;">Konto erstellen</button>
     </div>
 </div>
 
 <div id="chat-window"></div>
-<div id="typing-indicator"></div>
+<div id="typing-indicator" style="font-size:11px; padding:0 15px; color:gray; height:15px; font-style:italic;"></div>
+
+<div id="reply-preview">
+    <span id="reply-text-display"></span>
+    <button onclick="cancelReply()" style="background:none; border:none; color:red; font-weight:bold; cursor:pointer;">X</button>
+</div>
+
+<div id="edit-preview">
+    <span style="color:#ff9500;">✏️ Nachricht bearbeiten...</span>
+    <button onclick="cancelEdit()" style="background:none; border:none; color:red; font-weight:bold; cursor:pointer;">X</button>
+</div>
 
 <div class="input-area">
-    <button id="img-btn" style="background:none; border:none; font-size:22px;">🖼️</button>
+    <button id="img-btn" style="background:none; border:none; font-size:22px; cursor:pointer;">🖼️</button>
     <input type="text" id="message-input" placeholder="Nachricht..." autocomplete="off">
-    <button id="send-btn" style="background:#007aff; color:white; border:none; border-radius:50%; width:40px; height:40px;">➔</button>
+    <button id="send-btn" style="background:#007aff; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;">➔</button>
 </div>
 
 <script type="module">
@@ -102,161 +159,209 @@
     const db = getFirestore(app);
     const rtdb = getDatabase(app);
     let myName = localStorage.getItem("chat-user-logged");
-    let deleteAllowed = true;
+    let deleteAllowed = true, selId = null, selText = "", replyId = null, editId = null;
+    let lastSeenByOthers = {};
 
-    // --- DARKMODE ---
-    const toggleDark = (isDark) => { document.body.classList.toggle("dark-mode", isDark); localStorage.setItem("theme", isDark ? "dark" : "light"); };
-    if (localStorage.getItem("theme") === "dark") toggleDark(true);
-    document.getElementById("darkmode-btn").onclick = () => toggleDark(!document.body.classList.contains("dark-mode"));
-
-    // --- SIDEBAR & MENU ---
-    document.getElementById("open-menu").onclick = () => { document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebar-overlay").style.display = "block"; };
-    document.getElementById("sidebar-overlay").onclick = () => { document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebar-overlay").style.display = "none"; };
-
-    // --- STATUS ---
-    if (myName) {
-        set(ref(rtdb, 'status/' + myName), { online: true, lastSeen: rtdbTimestamp() });
-        onDisconnect(ref(rtdb, 'status/' + myName)).set({ online: false, lastSeen: rtdbTimestamp() });
-        document.getElementById("message-input").oninput = () => {
-            setDoc(doc(db, "typing", "status"), { [myName]: true }, { merge: true });
-            clearTimeout(window.tTimer);
-            window.tTimer = setTimeout(() => setDoc(doc(db, "typing", "status"), { [myName]: false }, { merge: true }), 2000);
-        };
-    }
-
-    // --- REGISTRIERUNG & LOGIN (SICHERHEIT) ---
     const getAllowed = async () => {
         const s = await getDoc(doc(db, "settings", "allowedUsers"));
         return s.exists() ? s.data().names : ["infinity", "ozean"];
     };
 
-    document.getElementById("register-submit").onclick = async () => {
-        const n = document.getElementById("auth-user").value.trim().toLowerCase();
-        const p = document.getElementById("auth-pass").value.trim();
-        if(!n || !p) return alert("Felder ausfüllen!");
-        
-        const allowed = await getAllowed();
-        if(!allowed.includes(n)) return alert("Admin muss dich erst freischalten!");
-        
-        const userDoc = await getDoc(doc(db, "users", n));
-        if(userDoc.exists()) return alert("Account existiert bereits! Bitte logge dich normal ein.");
-        
-        await setDoc(doc(db, "users", n), { password: btoa(p) });
-        alert("Account erstellt! Du kannst dich jetzt einloggen.");
-    };
-
-    document.getElementById("login-submit").onclick = async () => {
-        const n = document.getElementById("auth-user").value.trim().toLowerCase();
-        const p = btoa(document.getElementById("auth-pass").value.trim());
-        const userDoc = await getDoc(doc(db, "users", n));
-        if(userDoc.exists() && userDoc.data().password === p) {
-            localStorage.setItem("chat-user-logged", n);
-            location.reload();
-        } else alert("Passwort oder Name falsch!");
-    };
-
-    document.getElementById("logout-btn-sidebar").onclick = async () => {
-        if(myName) await set(ref(rtdb, 'status/' + myName), { online: false, lastSeen: rtdbTimestamp() });
-        localStorage.clear(); location.reload();
-    };
-
-    // --- ADMIN & CHAT LOGIK ---
-    onSnapshot(doc(db, "settings", "global"), (s) => {
-        if(s.exists()) {
-            deleteAllowed = s.data().deleteAllowed;
-            const label = document.getElementById("delete-status-label");
-            label.textContent = deleteAllowed ? "LÖSCHEN: AKTIV" : "LÖSCHEN: GESPERRT";
-            label.style.background = deleteAllowed ? "#4cd964" : "#ff3b30";
-            label.style.color = "white";
-        }
-    });
-
-    onSnapshot(doc(db, "settings", "allowedUsers"), (docSnap) => {
-        const allowed = docSnap.exists() ? docSnap.data().names : ["infinity", "ozean"];
-        onValue(ref(rtdb, 'status'), (snapshot) => {
-            const container = document.getElementById("status-container");
-            container.innerHTML = "";
-            const statusData = snapshot.val() || {};
-            allowed.forEach(user => {
-                const data = statusData[user] || { online: false, lastSeen: null };
-                const isOnline = data.online === true;
-                const date = data.lastSeen ? new Date(data.lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
-                container.innerHTML += `<div style="margin:8px 0; font-size:13px;"><span style="height:8px; width:8px; border-radius:50%; display:inline-block; margin-right:5px; background:${isOnline?'#4cd964':'#8e8e93'}"></span><b>${user.toUpperCase()}</b> <span style="font-size:10px; opacity:0.5;">${isOnline ? 'online' : 'Zuletzt: '+date}</span></div>`;
-            });
-        });
-        if (myName === "infinity") {
-            document.getElementById("admin-section").style.display = "block";
-            document.getElementById("allowed-list-display").innerHTML = allowed.map(u => `<div>• ${u} <span style="color:red; cursor:pointer;" onclick="window.removeUser('${u}')">×</span></div>`).join("");
-        }
-    });
-
-    if (myName === "infinity") {
-        document.getElementById("add-user-btn").onclick = async () => {
-            const name = document.getElementById("new-user-name").value.trim().toLowerCase();
-            const allowed = await getAllowed();
-            if(name && !allowed.includes(name)) { 
-                allowed.push(name); 
-                await setDoc(doc(db, "settings", "allowedUsers"), { names: allowed }); 
-            }
-            document.getElementById("new-user-name").value = "";
-        };
-        window.removeUser = async (n) => {
-            const allowed = await getAllowed();
-            await setDoc(doc(db, "settings", "allowedUsers"), { names: allowed.filter(u => u !== n) });
-        };
-        document.getElementById("toggle-delete-btn").onclick = () => setDoc(doc(db, "settings", "global"), { deleteAllowed: !deleteAllowed }, { merge: true });
-    }
-
-    // --- ARCHIV ---
-    document.getElementById("archive-btn").onclick = async () => {
-        document.getElementById("archive-overlay").style.display = "flex";
-        const content = document.getElementById("archive-content");
-        content.innerHTML = "Lade Nachrichten...";
-        const snap = await getDocs(query(collection(db, "messages"), orderBy("createdAt", "asc")));
-        content.innerHTML = "";
-        snap.forEach(d => {
-            const m = d.data();
-            const div = document.createElement("div");
-            div.className = `msg ${m.user === myName ? 'sent' : 'received'}`;
-            div.innerHTML = `<small style="font-size:9px;">${m.user}</small><div>${m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%; border-radius:10px;"><br>` : ''}${m.text || ''}</div>`;
-            content.appendChild(div);
-        });
-        content.scrollTop = content.scrollHeight;
-    };
-    document.getElementById("close-archive").onclick = () => document.getElementById("archive-overlay").style.display = "none";
-
-    // --- CHAT DISPLAY ---
     if (myName) {
-        document.getElementById("auth-overlay").style.display = "none";
-        document.getElementById("display-name").textContent = myName.toUpperCase();
-        onSnapshot(query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(30)), (snap) => {
-            const win = document.getElementById("chat-window");
-            win.innerHTML = ""; const msgs = []; snap.forEach(d => msgs.push({id: d.id, ...d.data()}));
-            msgs.reverse().forEach(m => {
-                const div = document.createElement("div"); div.className = `msg ${m.user === myName ? 'sent' : 'received'}`;
-                const time = m.createdAt ? m.createdAt.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
-                div.innerHTML = `<small style="font-size:9px; opacity:0.7;">${m.user}</small><div>${m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%; border-radius:10px;"><br>` : ''}${m.text || ''} <span style="font-size:8px; opacity:0.5; margin-left:5px;">${time}</span></div>`;
-                div.onclick = async () => { if(m.user === myName && (deleteAllowed || myName === "infinity") && confirm("Löschen?")) await deleteDoc(doc(db, "messages", m.id)); };
-                win.appendChild(div);
-            });
-            win.scrollTop = win.scrollHeight;
-        });
-        
+        set(ref(rtdb, 'status/' + myName), { online: true, lastSeen: rtdbTimestamp() });
+        onDisconnect(ref(rtdb, 'status/' + myName)).set({ online: false, lastSeen: rtdbTimestamp() });
+
+        document.getElementById("message-input").oninput = () => {
+            setDoc(doc(db, "typing", "status"), { [myName]: true }, { merge: true });
+            clearTimeout(window.tT);
+            window.tT = setTimeout(() => setDoc(doc(db, "typing", "status"), { [myName]: false }, { merge: true }), 2000);
+        };
+
         onSnapshot(doc(db, "typing", "status"), (s) => {
             if(!s.exists()) return;
             const typing = Object.keys(s.data()).filter(u => s.data()[u] === true && u !== myName);
             document.getElementById("typing-indicator").textContent = typing.length ? typing.join(", ") + " schreibt..." : "";
         });
+
+        onSnapshot(doc(db, "settings", "allowedUsers"), (docSnap) => {
+            const allowed = docSnap.exists() ? docSnap.data().names : ["infinity", "ozean"];
+            onValue(ref(rtdb, 'status'), (snapshot) => {
+                const container = document.getElementById("status-container");
+                container.innerHTML = "";
+                const data = snapshot.val() || {};
+                lastSeenByOthers = data;
+                allowed.forEach(user => {
+                    const s = data[user] || { online: false, lastSeen: null };
+                    const time = s.lastSeen ? new Date(s.lastSeen).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+                    container.innerHTML += `<div style="font-size:13px; margin:8px 0;"><span style="height:8px; width:8px; border-radius:50%; display:inline-block; background:${s.online?'#4cd964':'#8e8e93'}"></span> <b>${user.toUpperCase()}</b> <span style="font-size:10px; opacity:0.5;">${s.online?'online':'Zuletzt '+time}</span></div>`;
+                });
+            });
+            if(myName === "infinity") {
+                document.getElementById("admin-section").style.display = "block";
+                document.getElementById("allowed-list-display").innerHTML = allowed.map(u => `<div>• ${u} <span style="color:red; cursor:pointer;" onclick="window.remU('${u}')">×</span></div>`).join("");
+            }
+        });
+
+        onSnapshot(doc(db, "settings", "global"), (s) => {
+            if(s.exists()) {
+                deleteAllowed = s.data().deleteAllowed;
+                const l = document.getElementById("delete-status-label");
+                l.textContent = deleteAllowed ? "LÖSCHEN: AKTIV" : "LÖSCHEN: GESPERRT";
+                l.style.background = deleteAllowed ? "#4cd964" : "#ff3b30";
+            }
+        });
     }
 
-    const send = async (t, i = null) => {
-        if(!t && !i) return;
-        await addDoc(collection(db, "messages"), { text:t, imageUrl:i, user:myName, createdAt:serverTimestamp() });
-        document.getElementById("message-input").value = "";
+    // ARCHIV
+    document.getElementById("archive-btn").onclick = async () => {
+        document.getElementById("archive-overlay").style.display = "flex";
+        const cont = document.getElementById("archive-content");
+        cont.innerHTML = "<div style='text-align:center;'>Lade Archiv...</div>";
+        const snap = await getDocs(query(collection(db, "messages"), orderBy("createdAt", "asc")));
+        cont.innerHTML = "";
+        snap.forEach(d => {
+            const m = d.data();
+            const wrap = document.createElement("div");
+            wrap.className = `msg-wrapper ${m.user === myName ? 'sent' : 'received'}`;
+            const time = m.createdAt ? m.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+            wrap.innerHTML = `<small style="font-size:9px; opacity:0.5; margin-left:5px;">${m.user}</small><div class="msg">${m.text || ''}<div style="font-size:8px; opacity:0.5; text-align:right;">${time}</div></div>`;
+            cont.appendChild(wrap);
+        });
+        cont.scrollTop = cont.scrollHeight;
     };
-    document.getElementById("send-btn").onclick = () => send(document.getElementById("message-input").value);
-    document.getElementById("message-input").onkeydown = (e) => { if(e.key === "Enter") send(e.target.value); };
-    document.getElementById("img-btn").onclick = () => { const u = prompt("Bild-Link:"); if(u) send("", u); };
+    document.getElementById("close-archive").onclick = () => document.getElementById("archive-overlay").style.display = "none";
+
+    // MENU & EDIT LOGIK
+    window.showMenu = (e, id, text, user) => {
+        e.preventDefault(); selId = id; selText = text;
+        const menu = document.getElementById("context-menu");
+        document.getElementById("menu-delete").style.display = (user === myName && (deleteAllowed || myName === "infinity")) ? "block" : "none";
+        document.getElementById("menu-edit").style.display = (user === myName) ? "block" : "none";
+        menu.style.display = "block";
+        menu.style.left = Math.min(e.pageX, window.innerWidth - 180) + "px";
+        menu.style.top = Math.min(e.pageY, window.innerHeight - 150) + "px";
+    };
+
+    window.prepareEdit = () => {
+        editId = selId;
+        document.getElementById("message-input").value = selText;
+        document.getElementById("edit-preview").style.display = "flex";
+        document.getElementById("reply-preview").style.display = "none";
+        document.getElementById("context-menu").style.display = "none";
+        document.getElementById("message-input").focus();
+    };
+
+    window.cancelEdit = () => { editId = null; document.getElementById("edit-preview").style.display = "none"; document.getElementById("message-input").value = ""; };
+
+    window.react = async (emoji) => {
+        const r = doc(db, "messages", selId);
+        const s = await getDoc(r);
+        let re = s.data().reactions || {}; re[myName] = emoji;
+        await updateDoc(r, { reactions: re });
+        document.getElementById("context-menu").style.display = "none";
+    };
+
+    window.prepareReply = () => {
+        replyId = selId; cancelEdit();
+        document.getElementById("reply-text-display").textContent = "Antwort an: " + selText.substring(0, 15) + "...";
+        document.getElementById("reply-preview").style.display = "flex";
+        document.getElementById("context-menu").style.display = "none";
+        document.getElementById("message-input").focus();
+    };
+
+    window.cancelReply = () => { replyId = null; document.getElementById("reply-preview").style.display = "none"; };
+    window.deleteMsg = async () => { if(confirm("Löschen?")) await deleteDoc(doc(db, "messages", selId)); document.getElementById("context-menu").style.display = "none"; };
+
+    // AUTH
+    document.getElementById("login-submit").onclick = async () => {
+        const n = document.getElementById("auth-user").value.trim().toLowerCase();
+        const p = btoa(document.getElementById("auth-pass").value.trim());
+        const s = await getDoc(doc(db, "users", n));
+        if(s.exists() && s.data().password === p) { localStorage.setItem("chat-user-logged", n); location.reload(); } else alert("Fehler!");
+    };
+    document.getElementById("register-submit").onclick = async () => {
+        const n = document.getElementById("auth-user").value.trim().toLowerCase();
+        const p = document.getElementById("auth-pass").value.trim();
+        const allowed = await getAllowed();
+        if(!allowed.includes(n)) return alert("Admin fragen!");
+        const s = await getDoc(doc(db, "users", n));
+        if(s.exists()) return alert("Existiert bereits!");
+        await setDoc(doc(db, "users", n), { password: btoa(p) }); alert("Erstellt!");
+    };
+
+    document.getElementById("logout-btn").onclick = () => { localStorage.clear(); location.reload(); };
+    document.getElementById("open-menu").onclick = () => { document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebar-overlay").style.display = "block"; };
+    document.getElementById("sidebar-overlay").onclick = () => { document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebar-overlay").style.display = "none"; };
+    document.getElementById("dark-btn").onclick = () => { document.body.classList.toggle("dark-mode"); localStorage.setItem("theme", document.body.classList.contains("dark-mode")?"dark":"light"); };
+    if(localStorage.getItem("theme")==="dark") document.body.classList.add("dark-mode");
+
+    // MAIN CHAT
+    if (myName) {
+        document.getElementById("auth-overlay").style.display = "none";
+        document.getElementById("display-name").textContent = myName.toUpperCase();
+
+        onSnapshot(query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(40)), (snap) => {
+            const win = document.getElementById("chat-window");
+            win.innerHTML = ""; let ms = []; snap.forEach(d => ms.push({id:d.id, ...d.data()}));
+            ms.reverse().forEach(m => {
+                const wrap = document.createElement("div");
+                wrap.className = `msg-wrapper ${m.user===myName?'sent':'received'}`;
+                const date = m.createdAt ? m.createdAt.toDate() : null;
+                const timeStr = date ? date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+                
+                let tickClass = "";
+                if(m.user === myName && date) {
+                    const others = Object.keys(lastSeenByOthers).filter(u => u !== myName);
+                    const readByAny = others.some(u => lastSeenByOthers[u].lastSeen > date.getTime());
+                    if(readByAny) tickClass = "tick-blue";
+                }
+
+                const ticks = m.user === myName ? `<span class="tick ${tickClass}">✓✓</span>` : "";
+                const editHint = m.edited ? `<span style="font-style:italic; font-size:7px; opacity:0.5;"> (bearbeitet)</span>` : "";
+                const rHtml = m.replyToText ? `<div class="reply-ref">Ref: ${m.replyToText}</div>` : "";
+                const reHtml = m.reactions ? `<div class="reactions">${Object.values(m.reactions).map(r => `<span class="reaction-badge">${r}</span>`).join("")}</div>` : "";
+                
+                wrap.innerHTML = `<small style="font-size:9px; opacity:0.5; margin-bottom:2px; margin-left:5px;">${m.user}</small>${rHtml}
+                    <div class="msg" oncontextmenu="showMenu(event,'${m.id}','${m.text.replace(/'/g, "\\'")}','${m.user}')" ontouchstart="window.tT=setTimeout(()=>showMenu(event,'${m.id}','${m.text.replace(/'/g, "\\'")}','${m.user}'),500)" ontouchend="clearTimeout(window.tT)">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%; border-radius:10px;"><br>` : ''}${m.text || ''}
+                    <div style="font-size:8px; opacity:0.6; text-align:right; margin-top:2px;">${editHint} ${timeStr} ${ticks}</div>
+                    </div>${reHtml}`;
+                win.appendChild(wrap);
+            });
+            win.scrollTop = win.scrollHeight;
+        });
+    }
+
+    const send = async () => {
+        const val = document.getElementById("message-input").value.trim();
+        if(!val) return;
+
+        if(editId) {
+            // BEARBEITEN
+            await updateDoc(doc(db, "messages", editId), { text: val, edited: true });
+            cancelEdit();
+        } else {
+            // NEU SENDEN
+            const msg = { text: val, user: myName, createdAt: serverTimestamp(), reactions: {} };
+            if(replyId) { msg.replyTo = replyId; msg.replyToText = selText; }
+            await addDoc(collection(db, "messages"), msg);
+            document.getElementById("message-input").value = "";
+            cancelReply();
+        }
+    };
+    
+    document.getElementById("send-btn").onclick = send;
+    document.getElementById("message-input").onkeydown = (e) => { if(e.key==="Enter") send(); };
+    document.getElementById("img-btn").onclick = () => { const u = prompt("Bild-URL:"); if(u) addDoc(collection(db, "messages"), {imageUrl:u, user:myName, createdAt:serverTimestamp()}); };
+    document.body.onclick = (e) => { if(!e.target.closest('#context-menu')) document.getElementById("context-menu").style.display="none"; };
+    
+    window.remU = async (n) => { const a = await getAllowed(); await setDoc(doc(db, "settings", "allowedUsers"), { names: a.filter(u => u !== n) }); };
+    document.getElementById("add-user-btn").onclick = async () => {
+        const n = document.getElementById("new-user-name").value.trim().toLowerCase();
+        const a = await getAllowed(); if(n && !a.includes(n)) { a.push(n); await setDoc(doc(db, "settings", "allowedUsers"), { names: a }); }
+        document.getElementById("new-user-name").value = "";
+    };
+    document.getElementById("toggle-delete-btn").onclick = () => updateDoc(doc(db, "settings", "global"), { deleteAllowed: !deleteAllowed });
 </script>
 </body>
 </html>
