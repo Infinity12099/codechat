@@ -28,7 +28,19 @@
         .sent { align-self: flex-end; }
         .received { align-self: flex-start; }
         
-        .msg { padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; cursor: pointer; position: relative; }
+        /* FIX FÜR APPLE: Verhindert System-Menü und Markierung */
+        .msg { 
+            padding: 8px 12px; 
+            border-radius: 18px; 
+            word-wrap: break-word; 
+            font-size: 15px; 
+            cursor: pointer; 
+            position: relative; 
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+        
         .sent .msg { background: #007aff; color: white; border-bottom-right-radius: 2px; }
         .received .msg { background: var(--received-msg); color: var(--text-color); border-bottom-left-radius: 2px; }
         
@@ -161,6 +173,27 @@
         return s.exists() ? s.data().names : ["infinity", "ozean"];
     };
 
+    // --- MENÜ LOGIK OPTIMIERT FÜR APPLE & DESKTOP ---
+    window.showMenu = (e, id, text, user, posX, posY) => {
+        if(e && e.cancelable) e.preventDefault(); 
+        selId = id; selText = text;
+        const menu = document.getElementById("context-menu");
+        
+        document.getElementById("menu-delete").style.display = (user === myName && (deleteAllowed || myName === "infinity")) ? "block" : "none";
+        document.getElementById("menu-edit").style.display = (user === myName) ? "block" : "none";
+        
+        menu.style.display = "block";
+        
+        let left = posX || (e ? e.pageX : 0);
+        let top = posY || (e ? e.pageY : 0);
+
+        if (left + 170 > window.innerWidth) left = window.innerWidth - 180;
+        if (top + 150 > window.innerHeight) top = window.innerHeight - 160;
+
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
+    };
+
     if (myName) {
         set(ref(rtdb, 'status/' + myName), { online: true, lastSeen: rtdbTimestamp() });
         onDisconnect(ref(rtdb, 'status/' + myName)).set({ online: false, lastSeen: rtdbTimestamp() });
@@ -204,6 +237,61 @@
                 l.style.background = deleteAllowed ? "#4cd964" : "#ff3b30";
             }
         });
+
+        // CHAT SNAPS & RENDERING
+        onSnapshot(query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(40)), (snap) => {
+            const win = document.getElementById("chat-window");
+            win.innerHTML = ""; 
+            let ms = []; snap.forEach(d => ms.push({id:d.id, ...d.data()}));
+            
+            ms.reverse().forEach(m => {
+                const wrap = document.createElement("div");
+                wrap.className = `msg-wrapper ${m.user===myName?'sent':'received'}`;
+                const date = m.createdAt ? m.createdAt.toDate() : null;
+                const timeStr = date ? date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+                
+                let tickClass = "";
+                if(m.user === myName && date) {
+                    const others = Object.keys(lastSeenByOthers).filter(u => u !== myName);
+                    const readByAny = others.some(u => lastSeenByOthers[u] && lastSeenByOthers[u].lastSeen > date.getTime());
+                    if(readByAny) tickClass = "tick-blue";
+                }
+
+                const ticks = m.user === myName ? `<span class="tick ${tickClass}">✓✓</span>` : "";
+                const editHint = m.edited ? `<span style="font-style:italic; font-size:7px; opacity:0.5;"> (bearbeitet)</span>` : "";
+                const rHtml = m.replyToText ? `<div class="reply-ref">Ref: ${m.replyToText}</div>` : "";
+                const reHtml = (m.reactions && Object.keys(m.reactions).length > 0) ? `<div class="reactions">${Object.values(m.reactions).map(r => `<span class="reaction-badge">${r}</span>`).join("")}</div>` : "";
+                
+                const msgId = `msg-${m.id}`;
+                wrap.innerHTML = `<small style="font-size:9px; opacity:0.5; margin-bottom:2px; margin-left:5px;">${m.user}</small>${rHtml}
+                    <div class="msg" id="${msgId}">
+                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%; border-radius:10px;"><br>` : ''}${m.text || ''}
+                    <div style="font-size:8px; opacity:0.6; text-align:right; margin-top:2px;">${editHint} ${timeStr} ${ticks}</div>
+                    </div>${reHtml}`;
+                win.appendChild(wrap);
+
+                // --- LONG PRESS LOGIK FÜR iOS ---
+                const msgElem = document.getElementById(msgId);
+                let pressTimer;
+
+                const start = (e) => {
+                    pressTimer = setTimeout(() => {
+                        const touch = e.touches ? e.touches[0] : e;
+                        window.showMenu(e, m.id, (m.text || '').replace(/'/g, "\\'"), m.user, touch.pageX, touch.pageY);
+                    }, 500);
+                };
+                const stop = () => clearTimeout(pressTimer);
+
+                msgElem.addEventListener('touchstart', start, {passive: true});
+                msgElem.addEventListener('touchend', stop);
+                msgElem.addEventListener('touchmove', stop);
+                msgElem.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    window.showMenu(e, m.id, (m.text || '').replace(/'/g, "\\'"), m.user, e.pageX, e.pageY);
+                });
+            });
+            win.scrollTop = win.scrollHeight;
+        });
     }
 
     // ARCHIV
@@ -224,17 +312,6 @@
         cont.scrollTop = cont.scrollHeight;
     };
     document.getElementById("close-archive").onclick = () => document.getElementById("archive-overlay").style.display = "none";
-
-    // MENU & EDIT LOGIK
-    window.showMenu = (e, id, text, user) => {
-        e.preventDefault(); selId = id; selText = text;
-        const menu = document.getElementById("context-menu");
-        document.getElementById("menu-delete").style.display = (user === myName && (deleteAllowed || myName === "infinity")) ? "block" : "none";
-        document.getElementById("menu-edit").style.display = (user === myName) ? "block" : "none";
-        menu.style.display = "block";
-        menu.style.left = Math.min(e.pageX, window.innerWidth - 180) + "px";
-        menu.style.top = Math.min(e.pageY, window.innerHeight - 150) + "px";
-    };
 
     window.prepareEdit = () => {
         editId = selId;
@@ -289,43 +366,6 @@
     document.getElementById("dark-btn").onclick = () => { document.body.classList.toggle("dark-mode"); localStorage.setItem("theme", document.body.classList.contains("dark-mode")?"dark":"light"); };
     if(localStorage.getItem("theme")==="dark") document.body.classList.add("dark-mode");
 
-    // MAIN CHAT
-    if (myName) {
-        document.getElementById("auth-overlay").style.display = "none";
-        document.getElementById("display-name").textContent = myName.toUpperCase();
-
-        onSnapshot(query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(40)), (snap) => {
-            const win = document.getElementById("chat-window");
-            win.innerHTML = ""; let ms = []; snap.forEach(d => ms.push({id:d.id, ...d.data()}));
-            ms.reverse().forEach(m => {
-                const wrap = document.createElement("div");
-                wrap.className = `msg-wrapper ${m.user===myName?'sent':'received'}`;
-                const date = m.createdAt ? m.createdAt.toDate() : null;
-                const timeStr = date ? date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
-                
-                let tickClass = "";
-                if(m.user === myName && date) {
-                    const others = Object.keys(lastSeenByOthers).filter(u => u !== myName);
-                    const readByAny = others.some(u => lastSeenByOthers[u] && lastSeenByOthers[u].lastSeen > date.getTime());
-                    if(readByAny) tickClass = "tick-blue";
-                }
-
-                const ticks = m.user === myName ? `<span class="tick ${tickClass}">✓✓</span>` : "";
-                const editHint = m.edited ? `<span style="font-style:italic; font-size:7px; opacity:0.5;"> (bearbeitet)</span>` : "";
-                const rHtml = m.replyToText ? `<div class="reply-ref">Ref: ${m.replyToText}</div>` : "";
-                const reHtml = (m.reactions && Object.keys(m.reactions).length > 0) ? `<div class="reactions">${Object.values(m.reactions).map(r => `<span class="reaction-badge">${r}</span>`).join("")}</div>` : "";
-                
-                wrap.innerHTML = `<small style="font-size:9px; opacity:0.5; margin-bottom:2px; margin-left:5px;">${m.user}</small>${rHtml}
-                    <div class="msg" oncontextmenu="showMenu(event,'${m.id}','${(m.text || '').replace(/'/g, "\\'")}', '${m.user}')">
-                    ${m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%; border-radius:10px;"><br>` : ''}${m.text || ''}
-                    <div style="font-size:8px; opacity:0.6; text-align:right; margin-top:2px;">${editHint} ${timeStr} ${ticks}</div>
-                    </div>${reHtml}`;
-                win.appendChild(wrap);
-            });
-            win.scrollTop = win.scrollHeight;
-        });
-    }
-
     const send = async () => {
         const val = document.getElementById("message-input").value.trim();
         if(!val) return;
@@ -345,7 +385,6 @@
     document.getElementById("send-btn").onclick = send;
     document.getElementById("message-input").onkeydown = (e) => { if(e.key==="Enter") send(); };
     
-    // BILD-URL FUNKTION (Plan B integriert)
     document.getElementById("img-btn").onclick = () => { 
         const u = prompt("Bild-URL einfügen:"); 
         if(u && u.startsWith("http")) {
